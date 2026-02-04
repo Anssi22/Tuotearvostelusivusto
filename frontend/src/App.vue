@@ -3,7 +3,6 @@
     <header class="header">
       <div>
         <h1>Tuotearvostelusivusto</h1>
-        <p class="muted">Vue + Node + MongoDB + JWT</p>
       </div>
 
       <div v-if="user" class="userBox">
