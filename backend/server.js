@@ -14,7 +14,7 @@ app.use(express.json());
 
 // Reitit
 app.use("/api/auth", require("./routes/auth"));
-
+app.use("/api", require("./routes/products"));
 
 // MongoDB-yhteys 
 const MongoDB = async () => {
