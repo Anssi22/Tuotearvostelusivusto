@@ -1,13 +1,25 @@
 // src/api.js
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001/api";
+export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000/api";
+
+const TOKEN_KEY = "auth_token";
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+export function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
 
 async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
 
-  // yritetään lukea body aina
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
 
@@ -19,6 +31,15 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Auth
+  register: (email, password) =>
+    request("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) }),
+
+  login: (email, password) =>
+    request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+
+  me: () => request("/auth/me"),
+
   // Products
   getProducts: () => request("/products"),
 
@@ -36,7 +57,5 @@ export const api = {
     }),
 
   deleteReview: (productId, reviewId) =>
-    request(`/products/${productId}/reviews/${reviewId}`, {
-      method: "DELETE",
-    }),
+    request(`/products/${productId}/reviews/${reviewId}`, { method: "DELETE" }),
 };

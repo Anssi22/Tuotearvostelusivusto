@@ -1,22 +1,26 @@
-<!-- src/App.vue (siistitty) -->
 <template>
   <div class="page">
     <header class="header">
       <div>
         <h1>Tuotearvostelusivusto</h1>
-        <p class="muted">Selaa tuotteita ja kirjoita arvosteluja (Vue + fetch + REST).</p>
       </div>
 
-      <div class="userBox">
-        <label class="muted">Nimimerkki (”oma arvostelu”):</label>
-        <input v-model.trim="currentUser" placeholder="esim Antti"/>
+      <div v-if="user" class="userBox">
+        <div class="muted">Kirjautunut:</div>
+        <div class="userRow">
+          <strong>{{ user.email }}</strong>
+          <button @click="logout">Kirjaudu ulos</button>
+        </div>
       </div>
     </header>
 
     <main class="content">
+      <AuthForm v-if="!user" @authed="onAuthed" />
+
       <ProductList
+        v-else
         :products="products"
-        :currentUser="currentUser"
+        :currentUserEmail="user.email"
         :loading="loading"
         :error="error"
         @refresh="loadProducts"
@@ -29,16 +33,27 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref } from "vue";
 import ProductList from "./components/ProductList.vue";
-import { api } from "./api";
+import AuthForm from "./components/AuthForm.vue";
+import { api, setToken, getToken } from "./api";
 
+const user = ref(null);
 const products = ref([]);
 const loading = ref(false);
 const error = ref("");
-const currentUser = ref(localStorage.getItem("pr_user") || "guest");
 
-watch(currentUser, (val) => localStorage.setItem("pr_user", val || "guest"));
+async function bootstrapAuth() {
+  const token = getToken();
+  if (!token) return;
+  try {
+    user.value = await api.me();
+  } catch {
+    // token vanhentunut tms.
+    setToken("");
+    user.value = null;
+  }
+}
 
 async function loadProducts() {
   loading.value = true;
@@ -53,7 +68,21 @@ async function loadProducts() {
   }
 }
 
-onMounted(loadProducts);
+function onAuthed(me) {
+  user.value = me;
+  loadProducts();
+}
+
+function logout() {
+  setToken("");
+  user.value = null;
+  products.value = [];
+}
+
+onMounted(async () => {
+  await bootstrapAuth();
+  if (user.value) await loadProducts();
+});
 
 async function handleAddReview(productId, payload) {
   try {
@@ -90,5 +119,6 @@ async function handleDeleteReview(productId, reviewId) {
 .content { margin-top: 16px; }
 .muted { color: #666; }
 .userBox { display: flex; flex-direction: column; gap: 6px; }
-input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; }
+.userRow { display: flex; gap: 12px; align-items: center; }
+button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
 </style>
