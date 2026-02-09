@@ -244,13 +244,13 @@ JWT_SECRET=super_secret_dev_only
 
 ### JWT-token
 
-JWT eli JSON Web Token on allekirjoitettu token (header.payload.signature), jolla client todistaa API:lle kuka on ja mihin sillä on oikeus; payload on luettavissa, joten sinne ei laiteta salaisuuksia.
+- JWT eli JSON Web Token on allekirjoitettu token (header.payload.signature), jolla client todistaa API:lle kuka on ja mihin sillä on oikeus; payload on luettavissa, joten sinne ei laiteta salaisuuksia.
 ​
-JWT on vähän kuin “leima” tai kulkulupa, jonka saat kirjautumisen jälkeen mukaan taskuun, jotta sinun ei tarvitse joka ovella kirjautua uudestaan. Kun menet seuraavan kerran API:n (palvelimen) luo pyytämään jotain (“anna minun omat tietoni”), näytät tämän luvan, ja palvelin näkee siitä, kuka olet ja mitä saat tehdä.
+- JWT on vähän kuin “leima” tai kulkulupa, jonka saat kirjautumisen jälkeen mukaan taskuun, jotta sinun ei tarvitse joka ovella kirjautua uudestaan. Kun menet seuraavan kerran API:n (palvelimen) luo pyytämään jotain (“anna minun omat tietoni”), näytät tämän luvan, ja palvelin näkee siitä, kuka olet ja mitä saat tehdä.
 ​
-Se token on pitkä tekstinpätkä, jossa on kolme osaa pisteillä erotettuna: header, payload ja signature (muotoa header.payload.signature). Payload-osassa on väittämiä (esim. käyttäjän id ja voimassaoloaika), mutta se ei ole “salainen kirje” vaan enemmänkin “luettavissa oleva lappu”, joten sinne ei pidä laittaa salaisuuksia kuten salasanoja. Signature on se “vahaleima”, jonka palvelin tekee omalla salaisella avaimellaan: jos joku yrittää muokata lappua (payloadia), leima ei enää täsmää ja palvelin hylkää tokenin.
+- Se token on pitkä tekstinpätkä, jossa on kolme osaa pisteillä erotettuna: header, payload ja signature (muotoa header.payload.signature). Payload-osassa on väittämiä (esim. käyttäjän id ja voimassaoloaika), mutta se ei ole “salainen kirje” vaan enemmänkin “luettavissa oleva lappu”, joten sinne ei pidä laittaa salaisuuksia kuten salasanoja. Signature on se “vahaleima”, jonka palvelin tekee omalla salaisella avaimellaan: jos joku yrittää muokata lappua (payloadia), leima ei enää täsmää ja palvelin hylkää tokenin.
 ​
-Käytännössä: 1) kirjaudut sisään → 2) saat JWT:n → 3) lähetät sen jokaisen pyynnön mukana (yleensä Authorization: Bearer ...) → 4) palvelin tarkistaa allekirjoituksen ja voimassaolon → 5) päästää läpi tai estää. Jos token vanhenee tai se on väärä, pitää kirjautua uudestaan tai hakea uusi token.
+- Käytännössä: 1) kirjaudut sisään → 2) saat JWT:n → 3) lähetät sen jokaisen pyynnön mukana (yleensä Authorization: Bearer ...) → 4) palvelin tarkistaa allekirjoituksen ja voimassaolon → 5) päästää läpi tai estää. Jos token vanhenee tai se on väärä, pitää kirjautua uudestaan tai hakea uusi token.
 ​
 ### 4. Backendin käynnistäminen
 
