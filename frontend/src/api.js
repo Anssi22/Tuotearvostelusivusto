@@ -21,7 +21,12 @@ async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try { data = JSON.parse(text); }
+  catch (err) { data = { message: text }; }
+  }
+
 
   if (!res.ok) {
     const msg = data?.error || data?.message || `HTTP ${res.status}`;

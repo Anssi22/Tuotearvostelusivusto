@@ -1,5 +1,7 @@
+<!-- src/components/ProductList.vue -->
 <template>
   <section>
+    <!-- Otsikko + päivitysnappi -->
     <div class="topRow">
       <h2>Tuotteet</h2>
       <button @click="$emit('refresh')" :disabled="loading">
@@ -7,10 +9,12 @@
       </button>
     </div>
 
+    <!-- Tilat -->
     <p v-if="loading" class="muted">Ladataan…</p>
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="!products?.length" class="muted">Ei tuotteita.</p>
 
+    <!-- Tuotekortit -->
     <div v-else class="grid">
       <article v-for="p in products" :key="p._id" class="card">
         <div class="cardHeader">
@@ -27,6 +31,12 @@
             Ei arvosteluja vielä.
           </p>
 
+          <!--
+            ReviewItem:
+            - saa review-olion propsina
+            - saa isOwner booleanin, jotta se voi näyttää edit/delete napit
+            - emittoi update(reviewId, payload) ja delete(reviewId)
+          -->
           <ReviewItem
             v-for="r in (p.reviews || [])"
             :key="r._id"
@@ -36,10 +46,17 @@
             @delete="(reviewId) => $emit('deleteReview', p._id, reviewId)"
           />
 
-          <ProductReviewForm
-            :disabled="loading"
-            @submit="(payload) => $emit('addReview', p._id, payload)"
-          />
+          <!--
+            ProductReviewForm:
+            - tarvitsee productId:n (required prop)
+            - emittoi submit(payload), jonka ProductList välittää parentille addReview(productId, payload)
+          -->
+        <ProductReviewForm
+          :productId="p._id"
+          :currentUserName="currentUserEmail"
+          :disabled="loading"
+          @submit="(payload) => $emit('addReview', p._id, payload)"
+        />
         </div>
       </article>
     </div>
@@ -52,16 +69,17 @@ import ReviewItem from "./ReviewItem.vue";
 
 const props = defineProps({
   products: { type: Array, default: () => [] },
+
+  // TÄRKEÄ: tällä hetkellä omistajuus tarkistetaan emaililla.
+  // Jos backend palauttaa vain userId:n, tämä logiikka ei osu.
   currentUserEmail: { type: String, required: true },
+
   loading: { type: Boolean, default: false },
   error: { type: String, default: "" },
 });
 
+// Omistajuustarkistus (HUOM: toimii vain jos review sisältää userEmail/user)
 function isOwner(review) {
-  // Backendin pitäisi palauttaa jokin näistä:
-  // - review.userEmail (suositus)
-  // - review.user (jos se sisältää emailin)
-  // - review.userId (jos vertaat userId:llä; silloin vaihda currentUserEmail -> currentUserId)
   const ownerEmail = (review?.userEmail || review?.user || "").trim().toLowerCase();
   return ownerEmail === props.currentUserEmail.trim().toLowerCase();
 }

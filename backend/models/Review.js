@@ -22,7 +22,7 @@ const reviewSchema = new mongoose.Schema(
         },
 
         // Tähtiarvio 1-5
-        rating: {
+        arvosteluNumero: {
             type: Number,
             required: true,
             min: 1,
@@ -30,7 +30,7 @@ const reviewSchema = new mongoose.Schema(
         },
 
         // Vapaa tekstiarvio
-        text: {
+        arvosteluTeksti: {
             type: String,
             required: true,
             trim: true,
@@ -38,7 +38,7 @@ const reviewSchema = new mongoose.Schema(
 
         // (Valinnainen) nimimerkki näytettäväksi UI:ssa.
         // HUOM: omistajuus EI perustu tähän, vaan userId:hen (tokenista).
-        authorName: {
+        nimimerkki: {
             type: String,
             default: "",
             trim: true,

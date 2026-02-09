@@ -46,15 +46,15 @@ router.get("/products", async (req, res) => {
 // ------------------------------------------------------------
 router.post("/products/:productId/reviews", auth, async (req, res) => {
     // Otetaan pyynnön body:sta arvostelun data
-    const { rating, text, authorName } = req.body;
+    const { arvosteluNumero, arvosteluTeksti, nimimerkki } = req.body;
 
     // Luodaan uusi Review-dokumentti MongoDB:hen
     const created = await Review.create({
         productId: req.params.productId, // URL:sta tuleva productId
         userId: req.userId,              // tokenista (auth middleware asetti)
-        rating,
-        text,
-        authorName, // valinnainen "nimimerkki" UI:ta varten (ei vaikuta omistajuuteen)
+        arvosteluNumero,
+        arvosteluTeksti,
+        nimimerkki, // valinnainen "nimimerkki" UI:ta varten (ei vaikuta omistajuuteen)
     });
 
     res.status(201).json(created);
@@ -69,18 +69,23 @@ router.post("/products/:productId/reviews", auth, async (req, res) => {
 // ------------------------------------------------------------
 router.put("/products/:productId/reviews/:reviewId", auth, async (req, res) => {
     // Haetaan arvostelu id:llä
-    const review = await Review.findById(req.params.reviewId);
+    const reviewId = req.params.reviewId;
+    const productId = req.params.productId;
+    // const userId = req.userId;
+
+    const review = await Review.findById(reviewId);
     if (!review) return res.sendStatus(404);
 
     // Varmistetaan että arvostelu kuuluu siihen productiin, jota URL väittää
-    if (String(review.productId) !== req.params.productId) return res.sendStatus(404);
+    if (String(review.productId) !== productId) return res.sendStatus(404);
 
     // Omistajuustarkistus: vain se käyttäjä, joka loi arvostelun, saa muokata
-    if (String(review.userId) !== req.userId) return res.sendStatus(403);
+    if (String(review.userId) !== user) return res.sendStatus(403);
 
     // Päivitetään vain jos uudet arvot annettiin (?? pitää vanhan jos undefined)
-    review.rating = req.body.rating ?? review.rating;
-    review.text = req.body.text ?? review.text;
+    review.arvosteluNumero = req.body.arvosteluNumero ?? review.arvosteluNumero;
+    review.arvosteluTeksti = req.body.arvosteluTeksti ?? review.arvosteluTeksti;
+    // review.nimimerkki = req.body.nimimerkki ?? review.nimimerkki; // jos haluat sallia nimimerkin vaihdon
 
     // Tallennetaan muutokset tietokantaan
     await review.save();

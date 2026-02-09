@@ -1,0 +1,75 @@
+@baseUrl = http://localhost:5000/api
+@email = testi@testi.com
+@password = salasana123
+
+###
+# Rekisteröi (jos käyttäjä jo on, saat 409/400 riippuen sun käsittelystä)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+# Login (nimetään pyyntö, jotta sen responsea voi käyttää myöhemmin)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+# Otetaan token login-vastauksesta muuttujaan (jos tämä ei toimi sun setupissa, kopioi token käsin)
+@token = {{login.response.body.token}}
+
+###
+# Me (testaa että token toimii); Bearer-token tulee Authorization-headeriin
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+###
+# Hae tuotteet (kopioi yhden tuotteen _id seuraavaan muuttujaan)
+# @name getProducts
+GET {{baseUrl}}/products
+
+###
+# Liitä tähän jokin _id edellisestä /products vastauksesta
+@productId = 69832365d30ef0ec5cb1d7c1
+
+###
+# Lisää arvostelu tuotteelle (vaatii auth)
+# @name addReview
+POST {{baseUrl}}/products/{{productId}}/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "text": "Testiarvostelu REST Clientistä",
+  "authorName": "Antti"
+}
+
+###
+# Poimi luodun arvostelun id talteen seuraavia pyyntöjä varten
+@reviewId = {{addReview.response.body._id}}
+
+###
+# Päivitä arvostelu (sun frontin reitti: /products/:productId/reviews/:reviewId)
+PUT {{baseUrl}}/products/{{productId}}/reviews/{{reviewId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "rating": 4,
+  "text": "Päivitetty REST Clientistä"
+}
+
+###
+# Poista arvostelu (204 No Content on ok)
+DELETE {{baseUrl}}/products/{{productId}}/reviews/{{reviewId}}
+Authorization: Bearer {{token}}
