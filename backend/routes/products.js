@@ -8,6 +8,28 @@ const auth = require("../middleware/auth");
 const Product = require("../models/Product");
 const Review = require("../models/Review");
 
+const multer = require("multer");
+const path = require("path");
+const crypto = require("crypto");
+
+// Multer-asetukset tiedostolatauksille (kuvat)
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, "..", "uploads"));
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname || "").toLowerCase();
+        const safeExt = [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? ext : "";
+        const name = crypto.randomBytes(16).toString("hex") + (safeExt || "");
+        cb(null, name);
+    },
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
 
 // ------------------------------------------------------------
 // HAE TUOTTEET JA NIIDEN ARVOSTELUT
@@ -35,9 +57,81 @@ router.get("/products", async (req, res) => {
         ...p,
         reviews: byProduct.get(String(p._id)) || [],
     }));
+    console.log(`nämä tuotteet: ${JSON.stringify(result, null, 2)}`
+);
     res.json(result);
 });
 
+
+
+// ------------------------------------------------------------
+// LISÄÄ TUOTE (VAATII KIRJAUTUMISEN)
+// ------------------------------------------------------------
+// middlewaret: auth = vaatii tokenin, upload.single("image") = odottaa "image"-kentässä olevan tiedoston
+router.post("/products", auth, upload.single("image"), async (req, res) => {
+    const { name, description } = req.body;
+
+    if (!name || !String(name).trim()) {
+        return res.status(400).json({ error: "name is required" });
+    }
+
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
+
+    const created = await Product.create({
+        ownerId: req.userId,
+        name: String(name).trim(),
+        description: String(description || "").trim(),
+        imagePath,
+    });
+
+    res.status(201).json(created);
+});
+
+
+// ------------------------------------------------------------
+// Päivitä tuotetta (VAATII KIRJAUTUMISEN)
+// Vain tuotteen omistaja saa päivittää
+
+// PÄIVITÄ TUOTE (vaatii login, tukee myös uuden kuvan uploadia)
+router.put("/products/:productId", auth, upload.single("image"), async (req, res) => {
+  const id = req.params.productId;
+
+  const product = await Product.findById(id);
+  if (!product) return res.sendStatus(404);
+
+  if (String(product.ownerId) !== String(req.userId)) {
+    return res.sendStatus(403);
+  }
+  // Tekstikentät tulee req.body:sta
+  if (req.body.name != null) product.name = String(req.body.name).trim();
+  if (req.body.description != null) product.description = String(req.body.description).trim();
+
+  // Jos lähetettiin uusi kuva, päivitä imagePath
+  if (req.file) {
+    product.imagePath = `/uploads/${req.file.filename}`;
+  }
+
+  await product.save();
+  res.json(product);
+});
+
+// ------------------------------------------------------------
+// POISTA TUOTE (vaatii login)
+// Vain tuotteen omistaja saa poistaa.
+// ------------------------------------------------------------
+// POISTA TUOTE (vaatii login)
+router.delete("/products/:productId", auth, async (req, res) => {
+  const product = await Product.findById(req.params.productId);
+  if (!product) return res.sendStatus(404);
+
+  if (String(product.ownerId) !== String(req.userId)) {
+    return res.sendStatus(403); // kirjautunut, mutta ei oikeutta
+  }
+
+  await Review.deleteMany({ productId: req.params.productId });
+  await product.deleteOne();
+  return res.sendStatus(204);
+});
 
 // ------------------------------------------------------------
 // LISÄÄ ARVOSTELU TUOTTEESEEN
@@ -68,28 +162,21 @@ router.post("/products/:productId/reviews", auth, async (req, res) => {
 // koska frontti lähettää molemmat id:t URL:ssa.
 // ------------------------------------------------------------
 router.put("/products/:productId/reviews/:reviewId", auth, async (req, res) => {
-    // Haetaan arvostelu id:llä
     const reviewId = req.params.reviewId;
     const productId = req.params.productId;
-    // const userId = req.userId;
+    const userId = req.userId;
 
     const review = await Review.findById(reviewId);
     if (!review) return res.sendStatus(404);
 
-    // Varmistetaan että arvostelu kuuluu siihen productiin, jota URL väittää
     if (String(review.productId) !== productId) return res.sendStatus(404);
+    if (String(review.userId) !== userId) return res.sendStatus(403);
 
-    // Omistajuustarkistus: vain se käyttäjä, joka loi arvostelun, saa muokata
-    if (String(review.userId) !== user) return res.sendStatus(403);
-
-    // Päivitetään vain jos uudet arvot annettiin (?? pitää vanhan jos undefined)
     review.arvosteluNumero = req.body.arvosteluNumero ?? review.arvosteluNumero;
     review.arvosteluTeksti = req.body.arvosteluTeksti ?? review.arvosteluTeksti;
-    // review.nimimerkki = req.body.nimimerkki ?? review.nimimerkki; // jos haluat sallia nimimerkin vaihdon
+    review.nimimerkki = req.body.nimimerkki ?? review.nimimerkki;
 
-    // Tallennetaan muutokset tietokantaan
     await review.save();
-
     res.json(review);
 });
 

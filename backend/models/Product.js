@@ -17,12 +17,9 @@ const productSchema = new mongoose.Schema(
             trim: true,
         },
 
-        // Kuva (URL). Ei pakollinen, mutta hyödyllinen jos haluat näyttää kuvan listassa.
-        imageUrl: {
-            type: String,
-            default: "",
-            trim: true,
-        },
+        // Kuva polku, joka tallennetaan tietokantaan. Esim. "/uploads/kuva123.jpg"
+        imagePath: { type: String, default: "", trim: true },
+        ownerId: { type: String, required: true }, // tai mongoose.Schema.Types.ObjectId jos käytät sitä userId:lle
     },
     {
     // Kun timestamps on true, Mongoose lisää automaattisesti:

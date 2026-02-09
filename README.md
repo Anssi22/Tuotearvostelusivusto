@@ -1,23 +1,26 @@
-# Todo-sovellus - React, Node.js & MongoDB
+# Tuotearvostelusovellus (Vue + Express + MongoDB)
 
-Käyttäjä voi lisätä, poistaa, muokata ja merkitä tehtäviä tehdyiksi/kesken.
-Frontend on toteutettu Reactilla, backend Node.js/Expressillä ja tietokantana MongoDB.
+Full-stack tuotearvostelusovellus, jossa voi:
+- Rekisteröityä ja kirjautua (JWT-token)
+- Listata tuotteet ja niiden arvostelut
+- Lisätä tuotteita / muokata / poistaa (vain omistaja, kuvan upload + tallennus `uploads/` kansioon)
+- Lisätä / muokata / poistaa arvosteluja (vain omistaja)
 
 ---
 
-## Ominaisuudet
-
--   Tehtävien lisääminen
--   Tehtävien poisto ja muokkaus
--   Tehtävien tilan vaihto
--   MongoDB-tallennus
--   HTTP-rajapinta frontendille
 
 ## Teknologiat
 
-- Frontend: React, JavaScript\
-- Backend: Node.js, Express, Mongoose\
-- Tietokanta: MongoDB
+Frontend:
+- Vue 3 (SFC, `<script setup>`)
+- Vite
+
+Backend:
+- Node.js + Express
+- MongoDB + Mongoose
+- JWT auth (custom middleware)
+- Multer tiedostolatauksille (`multipart/form-data`)
+
 
 ---
 
@@ -27,6 +30,7 @@ Frontend on toteutettu Reactilla, backend Node.js/Expressillä ja tietokantana M
 
 -   Node.js (v18+ suositeltu) ja npm (Node Package Manager)
 -   MongoDB (esim. MongoDB Atlas)
+-   Git-versionhallinta
 
 ### 1. Node.js ja npm
 
@@ -78,7 +82,7 @@ MongoDB Atlas on pilvipalvelu, jossa:
 
 MongoDB antaa käyttöön yhteysosoitteen, jota kutsutaan nimellä MongoDB URI.
 URI näyttää esimerkiksi tältä:
-- mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/vakioveikkaus
+- mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/tuotearvostelu
 
 Tämä URI on henkilökohtainen, eikä sitä saa jakaa julkisesti!
 URI tallennetaan ympäristömuuttujana .env-tiedostoon.
@@ -111,13 +115,13 @@ Ennen kuin sovellusta voi käyttää, projektin lähdekoodi täytyy kopioida oma
 3. Kloonaa (lataa) GitHub‑repositorio kirjoittamalla komentoriville:
 
 ```
-git clone https://github.com/Anssi22/toDo-sovellus.git
+git clone https://github.com/Anssi22/Tuotearvostelusivusto
 ```
 
 4. Siirry projektikansioon:
 
 ```
-cd toDo-sovellus
+cd Tuotearvostelusivusto
 ```
 
 ### 2. Riippuvuuksien asennus
@@ -175,10 +179,30 @@ Ympäristömuuttujat ovat asetuksia, jotka:
 
 ### .env‑tiedoston luominen
 
-1. Mene kansioon:
+1. Mene frontend-kansioon:
 
 ```
-backend
+cd frontend
+```
+
+2. Luo uusi tiedosto nimeltä:
+
+```
+.env
+```
+
+3. Lisää tiedostoon seuraavat rivit:
+
+```
+VITE_API_BASE=http://localhost:5000/api
+```
+Vite tekee env-muuttujat fronttiin vain jos ne alkaa `VITE_` prefixillä
+
+4. Mene backend-kansioon:
+
+```
+cd ..
+cd backend
 ```
 
 2. Luo uusi tiedosto nimeltä:
@@ -192,10 +216,11 @@ backend
 ```
 MONGODB_URI=<KOPIOI_TÄHÄN_OMA_MONGODB_YHTEYTESI>
 PORT=5000
+JWT_SECRET=super_secret_dev_only
 ```
 
-.env-tiedostossa siis määritellään, mitä porttia backend-käyttää ja missä url-osoitteessa tietokantasi sijaitsee.
-
+.env-tiedostossa siis määritellään, mitä porttia backend-käyttää ja missä url-osoitteessa tietokantasi sijaitsee sekä JWT:n allekirjoituksessa käytettävä salaisuus.
+​
 ### MongoDB‑yhteys
 
 - MongoDB URI on **oma henkilökohtainen tietokantayhteytesi**
@@ -217,6 +242,16 @@ PORT=5000
    mongodb+srv://KÄYTTÄJÄNIMI:SALASANA@cluster0.xxxxx.mongodb.net/todos
   ```
 
+### JWT-token
+
+JWT eli JSON Web Token on allekirjoitettu token (header.payload.signature), jolla client todistaa API:lle kuka on ja mihin sillä on oikeus; payload on luettavissa, joten sinne ei laiteta salaisuuksia.
+​
+JWT on vähän kuin “leima” tai kulkulupa, jonka saat kirjautumisen jälkeen mukaan taskuun, jotta sinun ei tarvitse joka ovella kirjautua uudestaan. Kun menet seuraavan kerran API:n (palvelimen) luo pyytämään jotain (“anna minun omat tietoni”), näytät tämän luvan, ja palvelin näkee siitä, kuka olet ja mitä saat tehdä.
+​
+Se token on pitkä tekstinpätkä, jossa on kolme osaa pisteillä erotettuna: header, payload ja signature (muotoa header.payload.signature). Payload-osassa on väittämiä (esim. käyttäjän id ja voimassaoloaika), mutta se ei ole “salainen kirje” vaan enemmänkin “luettavissa oleva lappu”, joten sinne ei pidä laittaa salaisuuksia kuten salasanoja. Signature on se “vahaleima”, jonka palvelin tekee omalla salaisella avaimellaan: jos joku yrittää muokata lappua (payloadia), leima ei enää täsmää ja palvelin hylkää tokenin.
+​
+Käytännössä: 1) kirjaudut sisään → 2) saat JWT:n → 3) lähetät sen jokaisen pyynnön mukana (yleensä Authorization: Bearer ...) → 4) palvelin tarkistaa allekirjoituksen ja voimassaolon → 5) päästää läpi tai estää. Jos token vanhenee tai se on väärä, pitää kirjautua uudestaan tai hakea uusi token.
+​
 ### 4. Backendin käynnistäminen
 
 Siirry backend‑kansioon ja käynnistä palvelin:
@@ -241,20 +276,51 @@ npm run dev
 ### 6. Sovelluksen avaaminen
 
 
-
 Avaa selaimella http://localhost:5173 ja käytä sovellusta.
 
 ---
 
-## API-dokumentaatio
+## API Endpoints
 
-GET /api/todos\
-POST /api/todos\
-PUT /api/todos/:id\
-DELETE /api/todos/:id
+Base: http://localhost:5000/api
+
+Auth:
+- POST /auth/register { email, password }
+- POST /auth/login { email, password } -> { token }
+- GET /auth/me (Authorization: Bearer)
+
+Products:
+- GET /products
+  - Palauttaa tuotteet ja liittää jokaiseen reviews-arrayn (server-side join)
+
+- POST /products (auth + multipart)
+  - FormData: name, description, image (file)
+
+- PUT /products/:productId (auth + multipart)
+  - FormData: name?, description?, image?
+
+- DELETE /products/:productId (auth)
+
+Reviews:
+- POST /products/:productId/reviews (auth) JSON payload
+
+- PUT /products/:productId/reviews/:reviewId (auth) JSON payload
+
+- DELETE /products/:productId/reviews/:reviewId (auth)
+
+Authorization / omistajuus:
+- Arvostelun muokkaus/poisto: sallittu vain jos review.userId === req.userId
+
+- Tuotteen muokkaus/poisto: suositus
+
+- tallenna tuotteeseen ownerId
+
+- tarkista product.ownerId === req.userId, muuten 403
+
 
 ---
 
 ## Jatkokehitysideoita
 
--   Kuvien lisäys -ominaisuus
+-   Admin-rooli: voi poistaa mitä vain
+-   Jos tuotteita alkaa olla paljon, niin tuotteet jaetaan eri kategorioihin.

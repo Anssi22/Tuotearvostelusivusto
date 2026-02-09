@@ -1,90 +1,99 @@
 <!-- src/App.vue -->
-
 <template>
-
-  <!-- Päälayout -->
   <div class="page">
+    <!-- HEADER -->
     <header class="header">
-      <div>
-        <h1>Tuotearvostelusivusto</h1>
+      <div class="brand">
+        <h1 class="title">Tuotearvostelusivusto</h1>
+        <p class="muted">Lisää tuotteita ja arvioi niitä kirjautuneena.</p>
       </div>
 
-      <!-- Jos user löytyy -> näytä "kirjautunut" boksi + logout -->
-      <div v-if="user" class="userBox">
-        <div class="muted">Kirjautunut:</div>
-        <div class="userRow">
-          <!-- Vue interpoloi muuttujan templateen {{ ... }} -->
-          <strong>{{ user.email }}</strong>
-          <button @click="logout">Kirjaudu ulos</button>
+      <div class="right">
+        <!-- Kun käyttäjä on kirjautunut -->
+        <div v-if="user" class="userBox">
+          <div class="muted small">Kirjautunut</div>
+          <div class="userRow">
+            <strong>{{ user.email }}</strong>
+            <button type="button" class="secondary" @click="logout" :disabled="loading">
+              Kirjaudu ulos
+            </button>
+          </div>
         </div>
       </div>
     </header>
 
+    <!-- CONTENT -->
     <main class="content">
-      <!-- Jos user puuttuu -> näytä AuthForm -->
+      <!-- Jos ei ole useria, näytä login/register -->
       <AuthForm v-if="!user" @authed="onAuthed" />
 
-      <!-- Muuten -> näytä ProductList ja välitä data propsina -->
-      <ProductList
-        v-else
-        :products="products"
-        :currentUserEmail="user.email"
-        :loading="loading"
-        :error="error"
-        @refresh="loadProducts"
-        @addReview="handleAddReview"
-        @updateReview="handleUpdateReview"
-        @deleteReview="handleDeleteReview"
-      />
+      <!-- Jos on user, näytä sovellus -->
+      <div v-else class="app">
+        <!-- Tuotteen lisäys (vaatii kirjautumisen) -->
+        <ProductCreateForm
+          :disabled="loading"
+          @create="handleCreateProduct"
+        />
+
+        <!-- Tuotelista + arvostelut -->
+        <ProductList
+          :products="products"
+          :currentUserId="user._id"
+          :currentUserEmail="user.email"
+          :loading="loading"
+          :error="error"
+          @refresh="loadProducts"
+          @updateProduct="onUpdateProduct"
+          @deleteProduct="onDeleteProduct"
+          @addReview="handleAddReview"
+          @updateReview="handleUpdateReview"
+          @deleteReview="handleDeleteReview"
+        />
+      </div>
     </main>
   </div>
 </template>
 
 <script setup>
-// script setup = Vue 3 Composition API -syntaksia, jossa tämä tiedosto on suoraan
-// komponentin "setup"-funktio.
-
 import { onMounted, ref } from "vue";
 
-// Tuodaan lapsikomponentit
-import ProductList from "./components/ProductList.vue";
 import AuthForm from "./components/AuthForm.vue";
+import ProductList from "./components/ProductList.vue";
+import ProductCreateForm from "./components/ProductCreateForm.vue";
 
-// Tuodaan backend-API wrapper + tokenin asetus/luku
-import { api, setToken, getToken } from "./api";
+import { api, getToken, setToken } from "./api";
 
-// ref(...) tekee reaktiivisen muuttujan.
-// Kun muutat .value (tai template käyttää sitä), UI päivittyy automaattisesti.
-const user = ref(null);       // kirjautunut käyttäjä (tai null)
-const products = ref([]);     // tuotteet listaan
-const loading = ref(false);   // lataustila
-const error = ref("");        // virheteksti
+const user = ref(null);
+const products = ref([]);
+const loading = ref(false);
+const error = ref("");
 
-// Kun sovellus käynnistyy, yritetään "palauttaa sessio":
-// jos localStoragessa on token, kutsutaan /auth/me ja haetaan käyttäjän tiedot.
+/**
+ * 1) Kun app käynnistyy:
+ * - jos localStoragessa on token, yritä hakea /auth/me
+ * - jos onnistuu, user asetetaan ja UI vaihtuu “kirjautuneeseen” tilaan
+ */
 async function bootstrapAuth() {
   const token = getToken();
   if (!token) return;
 
   try {
-    user.value = await api.me(); // GET /api/auth/me (Bearer-token mukana)
+    user.value = await api.me();
   } catch {
-    // Jos token on vanhentunut/invalid -> poistetaan token ja nollataan user
     setToken("");
     user.value = null;
   }
 }
 
-// Hakee tuotteet backendistä ja päivittää products-tilan.
+/**
+ * 2) Hae tuotteet + reviews backendistä
+ */
 async function loadProducts() {
   loading.value = true;
   error.value = "";
 
   try {
-    const data = await api.getProducts(); // GET /api/products
-
-    // Jos backend palauttaa suoraan arrayn -> käytä sitä
-    // Jos backend palauttaa { products: [...] } -> käytä data.products
+    const data = await api.getProducts();
     products.value = Array.isArray(data) ? data : (data.products || []);
   } catch (e) {
     error.value = e?.message || "Tuotteiden haku epäonnistui";
@@ -93,66 +102,139 @@ async function loadProducts() {
   }
 }
 
-// Kun AuthForm onnistuu (register/login), se emittoi "authed" ja antaa
-// mukana käyttäjä-objektin (me). App ottaa sen vastaan tässä.
+/**
+ * AuthForm emittoi "authed" kun login/register onnistuu.
+ * Me asetetaan user ja ladataan tuotteet.
+ */
 function onAuthed(me) {
   user.value = me;
   loadProducts();
 }
 
-// Logout = poista token, nollaa user ja tyhjennä tuotteet
 function logout() {
   setToken("");
   user.value = null;
   products.value = [];
+  error.value = "";
 }
 
-// onMounted ajetaan kun App komponentti on ladattu sivulle.
-// Ensin yritetään palauttaa kirjautuminen, ja jos user löytyy, haetaan tuotteet.
-onMounted(async () => {
-  await bootstrapAuth();
-  if (user.value) await loadProducts();
-});
-
-// Nämä handlerit välitetään ProductListille eventteihin.
-// ProductList emittoi addReview/updateReview/deleteReview, App kutsuu APIa.
-async function handleAddReview(productId, payload) {
+/**
+ * Tuotteen luonti (vaatii backendissä POST /products authilla)
+ */
+async function handleCreateProduct(payload) {
+  loading.value = true;
   try {
-    await api.addReview(productId, payload); // POST /api/products/:id/reviews
-    await loadProducts();                   // päivitetään lista
+    await api.createProduct(payload);
+    await loadProducts();
+  } catch (e) {
+    alert(e?.message || "Tuotteen lisäys epäonnistui");
+  } finally {
+    loading.value = false;
+  }
+}
+
+/**
+ * Reviews CRUD (ProductList emittoi eventit, App kutsuu APIa)
+ */
+async function handleAddReview(productId, payload) {
+  loading.value = true;
+  try {
+    await api.addReview(productId, payload);
+    await loadProducts();
   } catch (e) {
     alert(e?.message || "Arvostelun lisäys epäonnistui");
+  } finally {
+    loading.value = false;
   }
 }
 
 async function handleUpdateReview(productId, reviewId, payload) {
+  loading.value = true;
   try {
-    await api.updateReview(productId, reviewId, payload); // PUT /api/products/:pid/reviews/:rid
+    await api.updateReview(productId, reviewId, payload);
     await loadProducts();
   } catch (e) {
     alert(e?.message || "Arvostelun muokkaus epäonnistui");
+  } finally {
+    loading.value = false;
   }
 }
 
 async function handleDeleteReview(productId, reviewId) {
   if (!confirm("Poistetaanko arvostelu?")) return;
 
+  loading.value = true;
   try {
-    await api.deleteReview(productId, reviewId); // DELETE /api/products/:pid/reviews/:rid
+    await api.deleteReview(productId, reviewId);
     await loadProducts();
   } catch (e) {
     alert(e?.message || "Arvostelun poisto epäonnistui");
+  } finally {
+    loading.value = false;
   }
 }
+
+async function onUpdateProduct(productId, payload) {
+  try {
+    loading.value = true;
+    await api.updateProduct({ productId, ...payload });
+    await loadProducts();
+  } catch (e) {
+    error.value = e.message || String(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function onDeleteProduct(productId) {
+  try {
+    loading.value = true;
+    await api.deleteProduct(productId);
+    await loadProducts();
+  } catch (e) {
+    error.value = e.message || String(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(async () => {
+  await bootstrapAuth();
+  if (user.value) await loadProducts();
+});
 </script>
 
 <style scoped>
-/* scoped = nämä tyylit koskevat vain tätä komponenttia */
-.page { max-width: 1000px; margin: 0 auto; padding: 24px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-.header { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+}
+.header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.brand .title { margin: 0; }
 .content { margin-top: 16px; }
+.app { display: grid; gap: 16px; }
+
+.userBox { display: grid; gap: 6px; }
+.userRow { display: flex; gap: 10px; align-items: center; }
+
+button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+}
+button.secondary { background: #fafafa; }
+button:disabled { opacity: .6; cursor: default; }
+
 .muted { color: #666; }
-.userBox { display: flex; flex-direction: column; gap: 6px; }
-.userRow { display: flex; gap: 12px; align-items: center; }
-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+.small { font-size: 12px; }
 </style>

@@ -12,6 +12,9 @@ const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));  // Frontend-portti
 app.use(express.json());
 
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Reitit
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api", require("./routes/products"));

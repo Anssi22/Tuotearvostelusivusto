@@ -1,13 +1,21 @@
 <!-- src/components/ProductReviewForm.vue -->
 <template>
-  <!-- @submit.prevent estää sivun reloadin ja kutsuu submit()-funktiota -->
+  <!--
+    @submit.prevent:
+    - estää selaimen normaalin form submitin (ei reloadia)
+    - kutsuu submit()-funktiota
+  -->
   <form class="form" @submit.prevent="submit">
     <h4>Lisää arvostelu</h4>
 
-    <!-- Nimimerkki (tallennetaan review.nimimerkki kenttään) -->
     <label>
       Nimimerkki
-      <input v-model.trim="nimimerkki" required :disabled="disabled" />
+      <input
+        v-model.trim="nimimerkki"
+        required
+        :disabled="disabled"
+        autocomplete="nickname"
+      />
     </label>
 
     <label>
@@ -29,53 +37,72 @@
         rows="3"
         required
         :disabled="disabled"
+        placeholder="Kirjoita arvostelu..."
       ></textarea>
     </label>
 
-    <button type="submit" :disabled="disabled">
-      Tallenna
-    </button>
+    <div class="actions">
+      <button type="submit" :disabled="disabled || !canSubmit">Tallenna</button>
+    </div>
   </form>
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
-// Props: productId on pakollinen (ProductList antaa sen), currentUserName on valinnainen
-// defineProps(...) määrittelee komponentin “sisääntulot”. Parent (tässä ProductList.vue) käyttää komponenttia näin:
-// <ProductReviewForm :productId="p._id" :disabled="loading" ... />
+/**
+ * Props:
+ * - productId: pakollinen (parent tietää mihin tuotteeseen review tulee)
+ * - currentUserName: esitäyttö nimimerkille
+ * - disabled: parent voi disabloida kun ladataan
+ */
 const props = defineProps({
   productId: { type: String, required: true },
   currentUserName: { type: String, default: "guest" },
-
-  // disabled on kätevä, koska ProductList voi disabloida lomakkeen loading-tilassa
   disabled: { type: Boolean, default: false },
 });
 
-// Tämä komponentti emittoi vain "submit" ja antaa payloadin parentille
+/**
+ * Emits:
+ * - submit(payload)
+ * Parent kuuntelee: @submit="(payload) => ..."
+ */
 const emit = defineEmits(["submit"]);
 
-// Form state
 const nimimerkki = ref(props.currentUserName);
 const arvosteluNumero = ref(5);
 const arvosteluTeksti = ref("");
 
-// Jos parent vaihtaa currentUserName, päivitetään nimimerkki kenttään
+// Jos parent vaihtaa currentUserName, päivitä nimimerkki (esim. login/logout)
 watch(
   () => props.currentUserName,
-  (val) => (nimimerkki.value = val || "guest")
+  (val) => {
+    // Päivitä vain jos kenttä on tyhjä tai aiemmin guest,
+    // ettei käyttäjän itse kirjoittama nimimerkki yliajaudu kesken.
+    if (!nimimerkki.value || nimimerkki.value === "guest") {
+      nimimerkki.value = val || "guest";
+    }
+  }
 );
 
+// Kevyt validointi nappiin: estä tyhjät arvot
+const canSubmit = computed(() => {
+  const n = (nimimerkki.value || "").trim();
+  const t = (arvosteluTeksti.value || "").trim();
+  const r = Number(arvosteluNumero.value);
+  return n.length > 0 && t.length > 0 && r >= 1 && r <= 5;
+});
+
 function submit() {
-  // Emittoidaan payload backendin kenttänimillä:
-  // Review-skeemassa on authorName, rating, text
+  if (!canSubmit.value) return;
+
   emit("submit", {
-    nimimerkki: nimimerkki.value,
-    arvosteluNumero: arvosteluNumero.value,
-    arvosteluTeksti: arvosteluTeksti.value,
+    nimimerkki: nimimerkki.value.trim(),
+    arvosteluNumero: Number(arvosteluNumero.value),
+    arvosteluTeksti: arvosteluTeksti.value.trim(),
   });
 
-  // Tyhjennetään vain "sisältö", jätetään nimimerkki ennalleen
+  // Resetoi sisältö, jätä nimimerkki valmiiksi seuraavaa varten
   arvosteluNumero.value = 5;
   arvosteluTeksti.value = "";
 }
@@ -90,7 +117,20 @@ function submit() {
   gap: 10px;
 }
 label { display: grid; gap: 6px; font-size: 14px; }
-input, textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; }
-button { justify-self: start; padding: 8px 12px; border: 1px solid #ddd; border-radius: 10px; background: white; cursor: pointer; }
+input, textarea {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font: inherit;
+  background: white;
+}
+.actions { display: flex; gap: 10px; }
+button {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+}
 button:disabled { opacity: .6; cursor: default; }
 </style>
