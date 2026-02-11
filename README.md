@@ -1,25 +1,24 @@
 # Tuotearvostelusovellus (Vue + Express + MongoDB)
 
-Full-stack tuotearvostelusovellus, joka vaatii rekisteröityä ja kirjautua (JWT-token)****
-Jossa voi:
-- Listata tuotteet ja niiden arvostelut
-- Lisätä tuotteita / muokata / poistaa (vain omistaja, kuvan upload + tallennus `uploads/` kansioon)
-- Lisätä / muokata / poistaa arvosteluja (vain omistaja)
+Full-stack tuotearvostelusovellus, joka vaatii rekisteröitymisen ja kirjautumisen (JWT-token) toimiakseen.
+
+Sovelluksessa voi:
+- Listata tuotteet ja niiden arvostelut.
+- Lisätä / muokata / poistaa (vain omistaja) tuotteita.
+- Lisätä / muokata / poistaa (vain omistaja) arvosteluja.
 
 ---
-
 
 ## Teknologiat
 
 Frontend:
-- Vue 3 (SFC, `<script setup>`)
+- Vue 3
 - Vite
 
 Backend:
 - Node.js + Express
-- JWT auth (custom middleware) **********
-- Multer tiedostolatauksille (`multipart/form-data`)
-
+- JWT auth (custom middleware) käyttäjäautentikointiin
+- Multer tiedostolatauksille
 
 ---
 
@@ -58,9 +57,7 @@ Jos molemmat palauttavat versionumeron, voit jatkaa.
 
 ### 2. MongoDB – mikä se on ja miksi sitä tarvitaan?
 
-MongoDB on tietokanta, jota käytetään tiedon pysyvään tallentamiseen.***********
-
-Ilman MongoDB:tä sovellus kyllä käynnistyisi, mutta generointihistoriaa ei voitaisi tallentaa.
+MongoDB on tietokanta, jota käytetään tiedon pysyvään tallentamiseen.
 
 ### MongoDB Atlas (suositeltu aloittelijalle)
 
@@ -74,7 +71,10 @@ MongoDB Atlas on pilvipalvelu, jossa:
 
 MongoDB antaa käyttöön yhteysosoitteen, jota kutsutaan nimellä MongoDB URI.
 URI näyttää esimerkiksi tältä:
-- mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/tuotearvostelu***********
+
+```
+mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/tuotearvostelu
+```
 
 Tämä URI on henkilökohtainen, eikä sitä saa jakaa julkisesti!
 URI tallennetaan ympäristömuuttujana .env-tiedostoon.
@@ -274,16 +274,16 @@ Avaa selaimella http://localhost:5173 ja käytä sovellusta.
 
 ## API Endpoints
 
-Base: http://localhost:5000/api
+Base eli backend pohjaosoite: http://localhost:5000/api
 
-Auth: *********suomenkieltä tohon ja
+Auth eli käyttäjäreitit: 
 - POST /auth/register { email, password }
 - POST /auth/login { email, password } -> { token }
 - GET /auth/me (Authorization: Bearer)
 
-Products:
+Products eli tuotereitit:
 - GET /products
-  - Palauttaa tuotteet ja liittää jokaiseen reviews-arrayn (server-side join)
+  - Palauttaa tuotteet ja liittää jokaiseen reviews-arrayn
 
 - POST /products (auth + multipart)
   - FormData: name, description, image (file)
@@ -293,22 +293,12 @@ Products:
 
 - DELETE /products/:productId (auth)
 
-Reviews:
+Reviews eli arvostelureitit:
 - POST /products/:productId/reviews (auth) JSON payload
 
 - PUT /products/:productId/reviews/:reviewId (auth) JSON payload
 
 - DELETE /products/:productId/reviews/:reviewId (auth)
-
-Authorization / omistajuus:
-- Arvostelun muokkaus/poisto: sallittu vain jos review.userId === req.userId
-
-- Tuotteen muokkaus/poisto: suositus
-
-- tallenna tuotteeseen ownerId
-
-- tarkista product.ownerId === req.userId, muuten 403
-
 
 ---
 
