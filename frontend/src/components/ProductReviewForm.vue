@@ -12,7 +12,6 @@
       Nimimerkki
       <input
         v-model.trim="nimimerkki"
-        required
         :disabled="disabled"
         autocomplete="nickname"
       />
@@ -85,19 +84,18 @@ watch(
   }
 );
 
-// Kevyt validointi nappiin: estä tyhjät arvot
+// Kevyt validointi nappiin: estä tyhjät arvot, paitsi nimimerkki
 const canSubmit = computed(() => {
-  const n = (nimimerkki.value || "").trim();
   const t = (arvosteluTeksti.value || "").trim();
   const r = Number(arvosteluNumero.value);
-  return n.length > 0 && t.length > 0 && r >= 1 && r <= 5;
+  return t.length > 0 && r >= 1 && r <= 5;
 });
 
 function submit() {
   if (!canSubmit.value) return;
 
   emit("submit", {
-    nimimerkki: nimimerkki.value.trim(),
+    nimimerkki: (nimimerkki.value || "").trim() || "Anonyymi",
     arvosteluNumero: Number(arvosteluNumero.value),
     arvosteluTeksti: arvosteluTeksti.value.trim(),
   });
