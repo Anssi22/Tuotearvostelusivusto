@@ -1,7 +1,7 @@
 # Tuotearvostelusovellus (Vue + Express + MongoDB)
 
-Full-stack tuotearvostelusovellus, jossa voi:
-- Rekisteröityä ja kirjautua (JWT-token)
+Full-stack tuotearvostelusovellus, joka vaatii rekisteröityä ja kirjautua (JWT-token)****
+Jossa voi:
 - Listata tuotteet ja niiden arvostelut
 - Lisätä tuotteita / muokata / poistaa (vain omistaja, kuvan upload + tallennus `uploads/` kansioon)
 - Lisätä / muokata / poistaa arvosteluja (vain omistaja)
@@ -17,8 +17,7 @@ Frontend:
 
 Backend:
 - Node.js + Express
-- MongoDB + Mongoose
-- JWT auth (custom middleware)
+- JWT auth (custom middleware) **********
 - Multer tiedostolatauksille (`multipart/form-data`)
 
 
@@ -59,14 +58,7 @@ Jos molemmat palauttavat versionumeron, voit jatkaa.
 
 ### 2. MongoDB – mikä se on ja miksi sitä tarvitaan?
 
-MongoDB on tietokanta, jota käytetään tiedon pysyvään tallentamiseen.
-Tässä sovelluksessa MongoDB:hen tallennetaan:
-
-- generoidut Vakioveikkaus-rivit
-- valittu vakio (esim. Futisvakio, Lätkävakio)
-- kierroksen tunnistetiedot
-- luontiaika ja rivimäärä
-- historia-näkymässä näkyvät aiemmat generoinnit
+MongoDB on tietokanta, jota käytetään tiedon pysyvään tallentamiseen.***********
 
 Ilman MongoDB:tä sovellus kyllä käynnistyisi, mutta generointihistoriaa ei voitaisi tallentaa.
 
@@ -82,7 +74,7 @@ MongoDB Atlas on pilvipalvelu, jossa:
 
 MongoDB antaa käyttöön yhteysosoitteen, jota kutsutaan nimellä MongoDB URI.
 URI näyttää esimerkiksi tältä:
-- mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/tuotearvostelu
+- mongodb+srv://kayttaja:salasana@cluster0.xxxxx.mongodb.net/tuotearvostelu***********
 
 Tämä URI on henkilökohtainen, eikä sitä saa jakaa julkisesti!
 URI tallennetaan ympäristömuuttujana .env-tiedostoon.
@@ -284,7 +276,7 @@ Avaa selaimella http://localhost:5173 ja käytä sovellusta.
 
 Base: http://localhost:5000/api
 
-Auth:
+Auth: *********suomenkieltä tohon ja
 - POST /auth/register { email, password }
 - POST /auth/login { email, password } -> { token }
 - GET /auth/me (Authorization: Bearer)

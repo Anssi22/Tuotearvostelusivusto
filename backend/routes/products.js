@@ -57,8 +57,8 @@ router.get("/products", async (req, res) => {
         ...p,
         reviews: byProduct.get(String(p._id)) || [],
     }));
-    console.log(`nämä tuotteet: ${JSON.stringify(result, null, 2)}`
-);
+    console.log(`nämä tuotteet: ${JSON.stringify(result, null, 2)}`,
+    );
     res.json(result);
 });
 
@@ -94,25 +94,30 @@ router.post("/products", auth, upload.single("image"), async (req, res) => {
 
 // PÄIVITÄ TUOTE (vaatii login, tukee myös uuden kuvan uploadia)
 router.put("/products/:productId", auth, upload.single("image"), async (req, res) => {
-  const id = req.params.productId;
+    const id = req.params.productId;
 
-  const product = await Product.findById(id);
-  if (!product) return res.sendStatus(404);
+    const product = await Product.findById(id);
+    if (!product) return res.sendStatus(404);
 
-  if (String(product.ownerId) !== String(req.userId)) {
-    return res.sendStatus(403);
-  }
-  // Tekstikentät tulee req.body:sta
-  if (req.body.name != null) product.name = String(req.body.name).trim();
-  if (req.body.description != null) product.description = String(req.body.description).trim();
+    if (String(product.ownerId) !== String(req.userId)) {
+        return res.sendStatus(403);
+    }
+    // Tekstikentät tulee req.body:sta
+    if (req.body.name !== undefined && req.body.name !== null) {
+        product.name = String(req.body.name).trim();
+    }
 
-  // Jos lähetettiin uusi kuva, päivitä imagePath
-  if (req.file) {
-    product.imagePath = `/uploads/${req.file.filename}`;
-  }
+    if (req.body.description !== undefined && req.body.description !== null) {
+        product.description = String(req.body.description).trim();
+    }
 
-  await product.save();
-  res.json(product);
+    // Jos lähetettiin uusi kuva, päivitä imagePath
+    if (req.file) {
+        product.imagePath = `/uploads/${req.file.filename}`;
+    }
+
+    await product.save();
+    res.json(product);
 });
 
 // ------------------------------------------------------------
@@ -121,16 +126,16 @@ router.put("/products/:productId", auth, upload.single("image"), async (req, res
 // ------------------------------------------------------------
 // POISTA TUOTE (vaatii login)
 router.delete("/products/:productId", auth, async (req, res) => {
-  const product = await Product.findById(req.params.productId);
-  if (!product) return res.sendStatus(404);
+    const product = await Product.findById(req.params.productId);
+    if (!product) return res.sendStatus(404);
 
-  if (String(product.ownerId) !== String(req.userId)) {
-    return res.sendStatus(403); // kirjautunut, mutta ei oikeutta
-  }
+    if (String(product.ownerId) !== String(req.userId)) {
+        return res.sendStatus(403); // kirjautunut, mutta ei oikeutta
+    }
 
-  await Review.deleteMany({ productId: req.params.productId });
-  await product.deleteOne();
-  return res.sendStatus(204);
+    await Review.deleteMany({ productId: req.params.productId });
+    await product.deleteOne();
+    return res.sendStatus(204);
 });
 
 // ------------------------------------------------------------
